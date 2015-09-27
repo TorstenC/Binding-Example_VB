@@ -1,0 +1,229 @@
+﻿<Window
+    x:Class="MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:Binding_Example_VB"
+    SizeToContent="WidthAndHeight"
+    ResizeMode="NoResize"
+    mc:Ignorable="d"
+    d:DataContext="{Binding Path=ViewModel, Source={d:DesignInstance Type=local:MainWindow, IsDesignTimeCreatable=True}}"
+    DataContext="{Binding Path=ViewModel, RelativeSource={RelativeSource Self}}"
+    Title="Binding_Example_VB"
+    >
+    <Window.Resources>
+        <!-- xxx: Warum geht das nicht mit "DataContext="{StaticResource DesignTimeViewModelXML}""? -->
+        <XmlDataProvider x:Key="DesignTimeViewModelXML" XPath="/Node">
+            <x:XData>
+                <Node name="root1" xmlns="">
+                    <Element name="1">
+                        <Node name="1.1">Ohne mixed Content</Node>
+                    </Element>
+                </Node>
+            </x:XData>
+        </XmlDataProvider>
+        <!-- x:Key="NodeTemplate" vererbt sich nach unten -->
+        <!-- DataType="Node" wenn ein XML-Elementname unterschieden werden soll -->
+        <HierarchicalDataTemplate
+            x:Key="NodeTemplate1"
+            ItemsSource="{Binding XPath=child::node()}">
+            <Border
+                CornerRadius="5"
+                BorderThickness="1"
+                Padding="2,2,2,0"
+                Margin="0,1"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                MouseRightButtonDown="ContextMenu_MouseRightButtonDown"
+                >
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Löse ein Ereignis aus" Click="LöseEinEreignisAus_Click"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <StackPanel>
+                    <TextBlock x:Name="tblName" Text="?"/>
+                    <TextBox x:Name="tbxName" Text="?" BorderBrush="{x:Null}" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
+                    <ListBox ItemsSource="{Binding Path=Attributes}" BorderBrush="{x:Null}" Background="{x:Null}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" MouseRightButtonDown="ContextMenu_MouseRightButtonDown">
+                                    <TextBlock Text="{Binding Path=Name}" Foreground="#FFE20707"/>
+                                    <TextBlock Text="=&quot;" Foreground="#FF0074FF"/>
+                                    <TextBox Text="{Binding Path=Value}" BorderBrush="{x:Null}" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
+                                    <TextBlock Text="&quot;" Foreground="#FF0074FF"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+            <HierarchicalDataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Path=NodeType}" Value="Text">
+                    <Setter TargetName="tbxName" Property="Text" Value="{Binding Path=Value}"/>
+                    <Setter TargetName="tblName" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=NodeType}" Value="Element">
+                    <Setter TargetName="tblName" Property="Text" Value="{Binding Path=Name}"/>
+                    <Setter TargetName="tbxName" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </HierarchicalDataTemplate.Triggers>
+        </HierarchicalDataTemplate>
+        <HierarchicalDataTemplate
+            x:Key="NodeTemplate2"
+            ItemsSource="{Binding XPath=child::node()}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="tbName" Text="?" />
+                <ItemsControl ItemsSource="{Binding Path=Attributes}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="3,0,0,0">
+                                <TextBlock Text="{Binding Path=Name}" Foreground="#FFE20707"/>
+                                <TextBlock Text="=&quot;" Foreground="#FF0074FF"/>
+                                <TextBlock Text="{Binding Path=Value}"/>
+                                <TextBlock Text="&quot;" Foreground="#FF0074FF"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </StackPanel>
+            <HierarchicalDataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Path=NodeType}" Value="Text">
+                    <Setter TargetName="tbName" Property="Text" Value="{Binding Path=Value}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=NodeType}" Value="Element">
+                    <Setter TargetName="tbName" Property="Text" Value="{Binding Path=Name}"/>
+                </DataTrigger>
+            </HierarchicalDataTemplate.Triggers>
+        </HierarchicalDataTemplate>
+        <!-- Hier global, alternativ zu TreeView.ItemContainerStyle -->
+        <Style TargetType="TreeViewItem">
+            <Setter Property="IsExpanded" Value="True" />
+        </Style>
+    </Window.Resources>
+    <DockPanel>
+        <StatusBar DockPanel.Dock="Bottom">
+            <!-- Bei Content geht nur ContentStringFormat, bei Text geht "… Binding …, StringFormat=…" -->
+            <StatusBarItem DataContext="{Binding ViewModelStrict}" Content="{Binding CurrentTime}" ContentStringFormat="ss.f"/>
+            <TextBlock DataContext="{Binding ViewModelExpando}" Text="{Binding CurrentTime, StringFormat={}{0:ss.f}}"/>
+        </StatusBar>
+        <!-- Idee mit Listbox von http://stackoverflow.com/a/12027165/3303008 -->
+        <!-- ist aber doof, denn es gibt ein SelectedIndex, also doch besser mit ItemsControl! -->
+        <TreeView
+            ItemTemplate="{StaticResource NodeTemplate1}"
+            DataContext="{Binding ViewModelXML}"
+            ItemsSource="{Binding XPath=*}"/>
+        <!-- Bei veränderlicher Struktur: VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" -->
+        <!-- XML->Treeview-Beispiel von http://stackoverflow.com/a/7636525/3303008 -->
+        <TreeView
+            ItemTemplate="{StaticResource NodeTemplate2}"
+            DataContext="{Binding ViewModelXML}"
+            ItemsSource="{Binding XPath=*}"/>
+        <!-- Folgende Umsetzung orientiert sich an: http://stackoverflow.com/a/1777978/3303008 -->
+        <!-- Alternativ mit "public class MyHierarchicalView:ItemsControl", siehe http://stackoverflow.com/a/13753446/3303008 -->
+        <Border BorderThickness="1" >
+            <Border.Resources>
+                <!-- Alternative zu "Template="{StaticResource ItemsControlWithToggleButton}"" -->
+                <!--Style TargetType="ItemsControl">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type ItemsControl}">
+                                <StackPanel>
+                                    <ToggleButton
+                                        Content="{Binding XPath=@name}" 
+                                        Checked="LöseEinEreignisAus_Click"
+                                        Uid="{Binding XPath=@name}"
+                                        />
+                                    <ItemsPresenter/>
+                                </StackPanel>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </-->
+                <!-- Warum {x:Type ItemsControl} ???-->
+                <ControlTemplate x:Key="ItemsControlWithToggleButton" TargetType="ItemsControl">
+                    <StackPanel>
+                        <ToggleButton
+                            Content="{Binding XPath=@name}" 
+                            Checked="LöseEinEreignisAus_Click"
+                            Uid="{Binding XPath=@name}"
+                            />
+                        <ItemsPresenter/>
+                    </StackPanel>
+                </ControlTemplate>
+                <HierarchicalDataTemplate DataType="Folder">
+                    <Border BorderThickness="1" BorderBrush="Black" Padding="5" Margin="1,2,1,0">
+                        <!-- Rahmen um die Verschachtelung sichtbar zu machen -->
+                        <!-- Style="{StaticResource ItemsPanelHorizontal}" -->
+                        <ItemsControl
+                            Template="{StaticResource ItemsControlWithToggleButton}"
+                            ItemsSource="{Binding XPath=*}"
+                            >
+                        </ItemsControl>
+                    </Border>
+                </HierarchicalDataTemplate>
+                <HierarchicalDataTemplate DataType="Property1">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding XPath=@name}" VerticalAlignment="Center" Padding="0,0,3,0"/>
+                        <!-- SelectedIndex="{Binding XPath=@selected}" -->
+                        <ComboBox
+                            SelectionChanged="ComboBox_SelectionChanged"
+                            SelectedIndex="{Binding XPath=@index}"
+                            ItemsSource="{Binding XPath=*}"
+                            Uid="{Binding XPath=@uid}"
+                            >
+                            <!-- Das ComboBox.ItemTemplate ist bei XML nötig, weil DisplayMemberPath nur echte Properties akzeptiert -->
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding XPath=@name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+                <ControlTemplate x:Key="ItemsControlWithRadioButtons" TargetType="{x:Type ItemsControl}">
+                    <StackPanel>
+                        <TextBlock
+                            Text="{Binding XPath=@name}" 
+                            Uid="{Binding XPath=@name}"
+                            />
+                        <ItemsPresenter/>
+                    </StackPanel>
+                </ControlTemplate>
+                <HierarchicalDataTemplate DataType="Property">
+                    <ItemsControl
+                            Template="{StaticResource ItemsControlWithRadioButtons}"
+                            ItemsSource="{Binding XPath=*}"
+                            >
+                        <!-- es geht auch mit Style, siehe http://stackoverflow.com/a/16997608/3303008 -->
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </HierarchicalDataTemplate>
+                <HierarchicalDataTemplate DataType="Enum">
+                    <RadioButton
+                            GroupName="{Binding XPath=../@uid}"
+                            Content="{Binding XPath=@name}" 
+                            Uid="{Binding XPath=@name}"
+                            />
+                </HierarchicalDataTemplate>
+            </Border.Resources>
+            <!-- Alternativ: ItemsSource="{Binding XPath=Folder/*}" -->
+            <!-- Doof: Es gibt ein SelectedIndex, also doch besser mit ItemsControl -->
+            <ListBox
+                DataContext="{Binding ViewModelXML}"
+                ItemsSource="{Binding XPath=*}"
+                Padding="0"
+                >
+            </ListBox>
+        </Border>
+    </DockPanel>
+</Window>
